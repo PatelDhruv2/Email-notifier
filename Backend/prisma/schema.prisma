@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PriorityLevel {
+  high
+  medium
+  low
+}
+
+enum MatchType {
+  sender
+  keyword
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userEmail String
+  createdAt DateTime @default(now())
+  emails    Email[]
+}
+
+model Email {
+  id         String         @id @default(uuid())
+  subject    String
+  from       String
+  snippet    String
+  priority   PriorityLevel  // ✅ Now uses enum
+  messageId  String       // ✅ Ensure uniqueness
+  session    Session        @relation(fields: [sessionId], references: [id])
+  sessionId  String
+}
+
+model PriorityRule {
+  id        String      @id @default(uuid())
+  userEmail String
+  keyword   String
+  matchType MatchType   // ✅ Now uses enum
+  priority  PriorityLevel
+}
