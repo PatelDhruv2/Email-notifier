@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function Dashboard() {
+function Dashboard() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
@@ -17,10 +17,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
   // 📩 Fetch emails
   useEffect(() => {
     if (!token) return;
-    fetch(`http://localhost:5000/emails/${token}`)
+    fetch(`${backendUrl}/emails/${token}`)
       .then((res) => {
         if (!res.ok) throw new Error('Session not found');
         return res.json();
@@ -34,7 +36,7 @@ export default function Dashboard() {
         setError(err.message);
         setLoading(false);
       });
-  }, [token]);
+  }, [token, backendUrl]);
 
   // 🔍 Filter logic
   useEffect(() => {
@@ -49,7 +51,9 @@ export default function Dashboard() {
       );
     }
     if (priorityFilter !== 'All') {
-      result = result.filter((email) => email.priority.toLowerCase() === priorityFilter.toLowerCase());
+      result = result.filter(
+        (email) => email.priority.toLowerCase() === priorityFilter.toLowerCase()
+      );
     }
     setFiltered(result);
   }, [search, priorityFilter, emails]);
@@ -59,11 +63,11 @@ export default function Dashboard() {
     e.preventDefault();
     if (!ruleInput.trim()) return alert('Enter a keyword or email');
     try {
-      await fetch('http://localhost:5000/rules', {
+      await fetch(`${backendUrl}/rules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userEmail: extractUserFromToken(token), // temp hardcoded
+          userEmail: extractUserFromToken(token), // TEMP: Replace this with actual logic later
           keyword: ruleInput,
           matchType,
           priority,
@@ -172,29 +176,28 @@ export default function Dashboard() {
               <h3 className="font-medium text-base line-clamp-1">{email.subject}</h3>
               <p className="text-sm text-gray-400 mt-1 line-clamp-3">{email.snippet}</p>
             </div>
-          <a
-  href={`https://mail.google.com/mail/u/0/#inbox/${email.messageId}`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="mt-3 flex items-center text-blue-400 hover:text-blue-500 hover:underline text-sm font-medium"
->
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 48 48"
-    fill="currentColor"
-    className="w-4 h-4 mr-2"
-  >
-    <path
-      fill="#4285F4"
-      d="M43.611 10.083l-3.087 3.088-15.112 11.98-15.112-11.98-3.088-3.088L24 25.006z"
-    />
-    <path fill="#34A853" d="M6.6 12.6v22.8L19.2 24z" />
-    <path fill="#FBBC04" d="M41.4 12.6v22.8L28.8 24z" />
-    <path fill="#EA4335" d="M6.6 12.6l17.4 13.2 17.4-13.2z" />
-  </svg>
-  See in Gmail
-</a>
-
+            <a
+              href={`https://mail.google.com/mail/u/0/#inbox/${email.messageId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center text-blue-400 hover:text-blue-500 hover:underline text-sm font-medium"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 48 48"
+                fill="currentColor"
+                className="w-4 h-4 mr-2"
+              >
+                <path
+                  fill="#4285F4"
+                  d="M43.611 10.083l-3.087 3.088-15.112 11.98-15.112-11.98-3.088-3.088L24 25.006z"
+                />
+                <path fill="#34A853" d="M6.6 12.6v22.8L19.2 24z" />
+                <path fill="#FBBC04" d="M41.4 12.6v22.8L28.8 24z" />
+                <path fill="#EA4335" d="M6.6 12.6l17.4 13.2 17.4-13.2z" />
+              </svg>
+              See in Gmail
+            </a>
           </div>
         ))}
       </div>
@@ -216,7 +219,7 @@ function getTagClass(priority) {
   }
 }
 
-// ⚠️ TEMP: Replace this with actual logic
+// ⚠️ TEMP: Replace this with actual user parsing from token later
 function extractUserFromToken(token) {
-  return 'dhruv711622@gmail.com'; // Replace this with actual logic
+  return 'dhruv711622@gmail.com';
 }

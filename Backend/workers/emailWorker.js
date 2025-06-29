@@ -2,7 +2,7 @@ const { Worker } = require('bullmq');
 const { google } = require('googleapis');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
-const redis = require('../redisClient');  // ✅ Import your central Redis client
+const redis = require('../redisClient');  // ✅ Central Redis client
 const { oAuth2Client, getGmail } = require('../oauth2');
 const classifyPriority = require('../Classify');
 const IORedis = require('ioredis');
@@ -11,10 +11,12 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-// BullMQ requires a separate connection for queue
+// ✅ BullMQ connection for production
 const connection = new IORedis({
   host: process.env.REDIS_HOST || 'localhost',
   port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
+  password: process.env.REDIS_PASSWORD || undefined,  // ✅ If Railway Redis uses password
+  tls: process.env.REDIS_TLS === 'true' ? {} : undefined,  // ✅ For managed Redis with TLS
   maxRetriesPerRequest: null,
 });
 

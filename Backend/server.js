@@ -6,17 +6,13 @@ const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 const { oAuth2Client, getGmail } = require('./oauth2');
 const classifyPriority = require('./Classify');
-
-
-
-
-// ✅ BullMQ Queue for Email Processing
 const emailQueue = require('./queues/emailQueue.js');
 
 dotenv.config();
 const prisma = new PrismaClient();
 const app = express();
-const PORT = 5000;
+
+const PORT = process.env.PORT || 5000;  // ✅ For Railway deployment
 
 app.use(cors());
 app.use(express.json());
@@ -43,14 +39,16 @@ app.get('/auth/google/callback', async (req, res) => {
 
     const token = crypto.randomUUID();
 
-    // ✅ Enqueue Email Processing Job (Instead of Direct Processing)
+    // ✅ Enqueue Email Processing Job
     await emailQueue.add('process-emails', {
       tokens,
       userEmail,
       token,
     });
 
-    res.redirect(`http://localhost:3000/dashboard?token=${token}`);
+    // ✅ Redirect to frontend dashboard (dynamic for deploy)
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    res.redirect(`${frontendUrl}/dashboard?token=${token}`);
   } catch (err) {
     console.error('OAuth Callback Error:', err);
     res.status(500).json({ error: 'Google Auth failed' });
@@ -81,12 +79,7 @@ app.post('/rules', async (req, res) => {
     }
 
     const rule = await prisma.priorityRule.create({
-      data: {
-        userEmail,
-        keyword,
-        matchType,
-        priority,
-      },
+      data: { userEmail, keyword, matchType, priority },
     });
 
     res.json({ success: true, rule });
@@ -96,7 +89,7 @@ app.post('/rules', async (req, res) => {
   }
 });
 
-// ✅ Job Status Check (Frontend can poll this)
+// ✅ Job Status Check
 app.get('/status/:token', async (req, res) => {
   try {
     const session = await prisma.session.findUnique({
@@ -113,8 +106,10 @@ app.get('/status/:token', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// ✅ Root health check
 app.get('/', (req, res) => {
-  res.send('Hello World');
+  res.send('Hello World from Railway deployed backend!');
 });
 
 // 🔍 Custom classifier using rules
@@ -132,8 +127,8 @@ async function classifyWithRules(subject, snippet, from, userEmail) {
     }
   }
 
-  // fallback to default ML classifier
+  // fallback to ML classifier
   return classifyPriority(subject, snippet);
 }
 
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
