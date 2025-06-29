@@ -1,9 +1,9 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-function Dashboard() {
+export default function Dashboard() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
@@ -19,7 +19,6 @@ function Dashboard() {
 
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  // 📩 Fetch emails
   useEffect(() => {
     if (!token) return;
     fetch(`${backendUrl}/emails/${token}`)
@@ -38,7 +37,6 @@ function Dashboard() {
       });
   }, [token, backendUrl]);
 
-  // 🔍 Filter logic
   useEffect(() => {
     let result = [...emails];
     const query = search.toLowerCase();
@@ -58,7 +56,6 @@ function Dashboard() {
     setFiltered(result);
   }, [search, priorityFilter, emails]);
 
-  // ➕ Add new rule
   const handleAddRule = async (e) => {
     e.preventDefault();
     if (!ruleInput.trim()) return alert('Enter a keyword or email');
@@ -67,7 +64,7 @@ function Dashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userEmail: extractUserFromToken(token), // TEMP: Replace this with actual logic later
+          userEmail: extractUserFromToken(token),
           keyword: ruleInput,
           matchType,
           priority,
@@ -87,8 +84,7 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-[#0e1117] text-white px-6 py-10">
       <h1 className="text-3xl font-bold text-center mb-6">📬 Email Priority Dashboard</h1>
-
-      {/* 🔧 Rule Form */}
+      {/* Rule form */}
       <form
         onSubmit={handleAddRule}
         className="bg-[#161b22] border border-gray-700 p-4 rounded-md mb-8 flex flex-col sm:flex-row sm:items-end gap-3"
@@ -134,7 +130,7 @@ function Dashboard() {
         </button>
       </form>
 
-      {/* 🔍 Search & Filter */}
+      {/* Search and filter */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <input
           type="text"
@@ -155,7 +151,7 @@ function Dashboard() {
         </select>
       </div>
 
-      {/* 📦 Email Grid */}
+      {/* Email list */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((email, i) => (
           <div
@@ -182,20 +178,6 @@ function Dashboard() {
               rel="noopener noreferrer"
               className="mt-3 flex items-center text-blue-400 hover:text-blue-500 hover:underline text-sm font-medium"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 48 48"
-                fill="currentColor"
-                className="w-4 h-4 mr-2"
-              >
-                <path
-                  fill="#4285F4"
-                  d="M43.611 10.083l-3.087 3.088-15.112 11.98-15.112-11.98-3.088-3.088L24 25.006z"
-                />
-                <path fill="#34A853" d="M6.6 12.6v22.8L19.2 24z" />
-                <path fill="#FBBC04" d="M41.4 12.6v22.8L28.8 24z" />
-                <path fill="#EA4335" d="M6.6 12.6l17.4 13.2 17.4-13.2z" />
-              </svg>
               See in Gmail
             </a>
           </div>
@@ -205,7 +187,6 @@ function Dashboard() {
   );
 }
 
-// 🔵 Tag coloring
 function getTagClass(priority) {
   switch (priority?.toLowerCase()) {
     case 'high':
@@ -219,7 +200,6 @@ function getTagClass(priority) {
   }
 }
 
-// ⚠️ TEMP: Replace this with actual user parsing from token later
 function extractUserFromToken(token) {
-  return 'dhruv711622@gmail.com';
+  return 'dhruv711622@gmail.com'; // Dummy for now
 }
