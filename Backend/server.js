@@ -7,6 +7,12 @@ const { PrismaClient } = require('@prisma/client');
 const { oAuth2Client, getGmail } = require('./oauth2');
 const classifyPriority = require('./Classify');
 
+
+
+
+// ✅ BullMQ Queue for Email Processing
+const emailQueue = require('./queues/emailQueue.js');
+
 dotenv.config();
 const prisma = new PrismaClient();
 const app = express();
@@ -35,50 +41,13 @@ app.get('/auth/google/callback', async (req, res) => {
     const profile = await gmail.users.getProfile({ userId: 'me' });
     const userEmail = profile.data.emailAddress;
 
-    const messages = await gmail.users.messages.list({
-      userId: 'me',
-      maxResults: 50,
-      labelIds: ['INBOX'],
-    });
-
-    const emails = [];
-
-    for (const msg of messages.data.messages) {
-      const full = await gmail.users.messages.get({ userId: 'me', id: msg.id });
-      const snippet = full.data.snippet;
-      const headers = full.data.payload.headers;
-      const subject = headers.find(h => h.name === 'Subject')?.value || '';
-      const from = headers.find(h => h.name === 'From')?.value || '';
-      const messageId = full.data.id; // ✅ extract Gmail message ID
-
-      const priority = await classifyWithRules(subject, snippet, from, userEmail);
-
-      emails.push({
-        subject,
-        from,
-        snippet,
-        priority,
-        messageId, // ✅ include messageId for Prisma
-      });
-    }
-
     const token = crypto.randomUUID();
 
-    await prisma.session.create({
-      data: {
-        token,
-        userEmail,
-        createdAt: new Date(),
-        emails: {
-          create: emails.map(email => ({
-            subject: email.subject,
-            from: email.from,
-            snippet: email.snippet,
-            priority: email.priority,
-            messageId: email.messageId, // ✅ required by Prisma schema
-          }))
-        }
-      }
+    // ✅ Enqueue Email Processing Job (Instead of Direct Processing)
+    await emailQueue.add('process-emails', {
+      tokens,
+      userEmail,
+      token,
     });
 
     res.redirect(`http://localhost:3000/dashboard?token=${token}`);
@@ -125,6 +94,27 @@ app.post('/rules', async (req, res) => {
     console.error('Add Rule Error:', err);
     res.status(500).json({ error: 'Failed to add rule' });
   }
+});
+
+// ✅ Job Status Check (Frontend can poll this)
+app.get('/status/:token', async (req, res) => {
+  try {
+    const session = await prisma.session.findUnique({
+      where: { token: req.params.token },
+    });
+
+    if (!session) {
+      return res.json({ status: 'processing' });
+    }
+
+    return res.json({ status: 'done' });
+  } catch (err) {
+    console.error('Status Check Error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+app.get('/', (req, res) => {
+  res.send('Hello World');
 });
 
 // 🔍 Custom classifier using rules
