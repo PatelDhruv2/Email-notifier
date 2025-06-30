@@ -60,7 +60,7 @@ export default function Dashboard() {
     e.preventDefault();
     if (!ruleInput.trim()) return alert('Enter a keyword or email');
     try {
-      await fetch(`${backendUrl}/rules`, {
+      await fetch(`https://email-notifier-production.up.railway.app/rules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
