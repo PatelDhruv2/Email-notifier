@@ -71,7 +71,7 @@ app.get('/emails/:token', async (req, res) => {
       where: { token: req.params.token },
       include: { emails: true },
     });
-
+    console.log(`🔍 Fetching emails for session: ${req.params.token}`);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
