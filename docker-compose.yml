@@ -1,8 +1,23 @@
+version: '3'
 services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
   backend:
     build: ./Backend
     ports:
       - "5000:5000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    networks:
+      - app-network
 
   worker1:
     build: ./Backend
@@ -12,6 +27,8 @@ services:
       - REDIS_PORT=6379
     depends_on:
       - redis
+    networks:
+      - app-network
 
   worker2:
     build: ./Backend
@@ -21,6 +38,8 @@ services:
       - REDIS_PORT=6379
     depends_on:
       - redis
+    networks:
+      - app-network
 
   worker3:
     build: ./Backend
@@ -30,16 +49,15 @@ services:
       - REDIS_PORT=6379
     depends_on:
       - redis
+    networks:
+      - app-network
 
   frontend:
     build: ./my-app
     ports:
       - "3000:3000"
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
+    networks:
+      - app-network
 
   nginx:
     image: nginx:latest
@@ -50,3 +68,8 @@ services:
     depends_on:
       - backend
       - frontend
+    networks:
+      - app-network
+
+networks:
+  app-network:

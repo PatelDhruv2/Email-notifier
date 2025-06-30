@@ -4,7 +4,7 @@ import { FcGoogle } from 'react-icons/fc';
 
 export default function Home() {
   const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
+  console.log(`Backend URL: ${backendUrl}`);
   return (
     <div className="min-h-screen bg-[#0e1117] text-white flex items-center justify-center px-4">
       <div className="bg-[#161b22] border border-gray-700 rounded-xl shadow-lg p-10 max-w-md w-full text-center">
