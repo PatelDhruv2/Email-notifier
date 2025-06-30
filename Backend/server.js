@@ -19,10 +19,7 @@ app.use(express.json());
 
 // ✅ Fallback for redirect URI
 const redirectUri =
-  process.env.REDIRECT_URI ||
-  (process.env.NODE_ENV === 'production'
-    ? 'https://email-notifier-production.up.railway.app/auth/google/callback'
-    : 'http://localhost:5000/auth/google/callback');
+  process.env.REDIRECT_URI;
 
 // 1️⃣ Google OAuth flow
 app.get('/auth/google', (req, res) => {
@@ -33,7 +30,7 @@ app.get('/auth/google', (req, res) => {
   });
   res.redirect(url);
 });
-
+console.log(`🔗 Google OAuth URL: ${redirectUri}`);
 // 2️⃣ Google OAuth callback
 app.get('/auth/google/callback', async (req, res) => {
   try {
