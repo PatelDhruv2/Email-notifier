@@ -12,16 +12,24 @@ dotenv.config();
 const prisma = new PrismaClient();
 const app = express();
 
-const PORT = process.env.PORT || 5000;  // ✅ For Railway deployment
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+
+// ✅ Fallback for redirect URI
+const redirectUri =
+  process.env.REDIRECT_URI ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://email-notifier-production.up.railway.app/auth/google/callback'
+    : 'http://localhost:5000/auth/google/callback');
 
 // 1️⃣ Google OAuth flow
 app.get('/auth/google', (req, res) => {
   const url = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/gmail.readonly'],
+    redirect_uri: redirectUri, // ✅ add redirect_uri explicitly
   });
   res.redirect(url);
 });
@@ -30,7 +38,10 @@ app.get('/auth/google', (req, res) => {
 app.get('/auth/google/callback', async (req, res) => {
   try {
     const { code } = req.query;
-    const { tokens } = await oAuth2Client.getToken(code);
+    const { tokens } = await oAuth2Client.getToken({
+      code,
+      redirect_uri: redirectUri, // ✅ pass same redirect_uri here too
+    });
     oAuth2Client.setCredentials(tokens);
 
     const gmail = getGmail(oAuth2Client);
@@ -39,14 +50,12 @@ app.get('/auth/google/callback', async (req, res) => {
 
     const token = crypto.randomUUID();
 
-    // ✅ Enqueue Email Processing Job
     await emailQueue.add('process-emails', {
       tokens,
       userEmail,
       token,
     });
 
-    // ✅ Redirect to frontend dashboard (dynamic for deploy)
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     res.redirect(`${frontendUrl}/dashboard?token=${token}`);
   } catch (err) {
@@ -127,7 +136,6 @@ async function classifyWithRules(subject, snippet, from, userEmail) {
     }
   }
 
-  // fallback to ML classifier
   return classifyPriority(subject, snippet);
 }
 
