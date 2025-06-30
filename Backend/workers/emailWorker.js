@@ -2,7 +2,7 @@ const { Worker } = require('bullmq');
 const { google } = require('googleapis');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
-const redis = require('../redisClient'); // Reused for caching
+const redis = require('../redisClient'); // Redis cache client
 const { oAuth2Client, getGmail } = require('../oauth2');
 const classifyPriority = require('../Classify');
 const IORedis = require('ioredis');
@@ -11,8 +11,9 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-// ✅ BullMQ connection using full REDIS_URL (recommended for Railway)
+// ✅ Redis connection (Railway-compatible with TLS)
 const connection = new IORedis(process.env.REDIS_URL, {
+  tls: {}, // Important for Railway Redis
   maxRetriesPerRequest: null,
   connectTimeout: 10000,
 });
@@ -33,7 +34,7 @@ async function getCachedEmail(userId, messageId, gmail) {
   return full.data;
 }
 
-// ✅ Custom rule-based classification
+// ✅ Rule-based classification
 async function classifyWithRules(subject, snippet, from, userEmail) {
   const rules = await prisma.priorityRule.findMany({ where: { userEmail } });
 

@@ -2,10 +2,9 @@ const { Queue } = require('bullmq');
 const IORedis = require('ioredis');
 require('dotenv').config();
 
-// ✅ Use REDIS_URL cleanly
+// ✅ Use REDIS_URL cleanly (e.g., from Railway)
 const connection = new IORedis(process.env.REDIS_URL, {
-  // Optional: enable TLS if REDIS_URL starts with rediss://
-  tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined,
+  tls: process.env.REDIS_URL?.startsWith('rediss://') ? {} : undefined, // Enable TLS only if using rediss://
   maxRetriesPerRequest: null,
   connectTimeout: 10000,
 });

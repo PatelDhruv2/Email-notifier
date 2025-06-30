@@ -18,26 +18,26 @@ app.use(cors());
 app.use(express.json());
 
 // ✅ Fallback for redirect URI
-const redirectUri =
-  process.env.REDIRECT_URI;
+const redirectUri = process.env.REDIRECT_URI;
 
 // 1️⃣ Google OAuth flow
 app.get('/auth/google', (req, res) => {
   const url = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['https://www.googleapis.com/auth/gmail.readonly'],
-    redirect_uri: redirectUri, // ✅ add redirect_uri explicitly
+    redirect_uri: redirectUri,
   });
   res.redirect(url);
 });
 console.log(`🔗 Google OAuth URL: ${redirectUri}`);
+
 // 2️⃣ Google OAuth callback
 app.get('/auth/google/callback', async (req, res) => {
   try {
     const { code } = req.query;
     const { tokens } = await oAuth2Client.getToken({
       code,
-      redirect_uri: redirectUri, // ✅ pass same redirect_uri here too
+      redirect_uri: redirectUri,
     });
     oAuth2Client.setCredentials(tokens);
 
@@ -118,7 +118,7 @@ app.get('/', (req, res) => {
   res.send('Hello World from Railway deployed backend!');
 });
 
-// 🔍 Custom classifier using rules
+// 🔍 Classifier with custom rules
 async function classifyWithRules(subject, snippet, from, userEmail) {
   const rules = await prisma.priorityRule.findMany({ where: { userEmail } });
 

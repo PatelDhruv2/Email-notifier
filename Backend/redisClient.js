@@ -2,7 +2,7 @@ const IORedis = require('ioredis');
 require('dotenv').config();
 
 const redis = new IORedis(process.env.REDIS_URL, {
-  tls: {}, // <== REQUIRED FOR RAILWAY
+  tls: {}, // ✅ REQUIRED for Railway-hosted Redis with TLS
   connectTimeout: 10000,
 });
 
