@@ -3,11 +3,19 @@ version: "3.9"
 services:
   backend:
     build: ./Backend
+    command: ["node", "server.js"]
     ports:
       - "5000:5000"
     environment:
-      - REDIS_URL=redis://default:OmhyWFpbMeJEFBIkCHdNSMbcQAFijtFX@mainline.proxy.rlwy.net:38368
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_TLS=${REDIS_TLS}
       - PORT=5000
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
+      - REDIRECT_URI=${REDIRECT_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
     networks:
       - app-network
 
@@ -15,7 +23,14 @@ services:
     build: ./Backend
     command: ["node", "workers/emailWorker.js"]
     environment:
-      - REDIS_URL=redis://default:OmhyWFpbMeJEFBIkCHdNSMbcQAFijtFX@mainline.proxy.rlwy.net:38368
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_TLS=${REDIS_TLS}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
+      - REDIRECT_URI=${REDIRECT_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
     networks:
       - app-network
 
@@ -23,7 +38,14 @@ services:
     build: ./Backend
     command: ["node", "workers/emailWorker.js"]
     environment:
-      - REDIS_URL=redis://default:OmhyWFpbMeJEFBIkCHdNSMbcQAFijtFX@mainline.proxy.rlwy.net:38368
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_TLS=${REDIS_TLS}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
+      - REDIRECT_URI=${REDIRECT_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
     networks:
       - app-network
 
@@ -31,7 +53,14 @@ services:
     build: ./Backend
     command: ["node", "workers/emailWorker.js"]
     environment:
-      - REDIS_URL=redis://default:OmhyWFpbMeJEFBIkCHdNSMbcQAFijtFX@mainline.proxy.rlwy.net:38368
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_TLS=${REDIS_TLS}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
+      - REDIRECT_URI=${REDIRECT_URI}
+      - DATABASE_URL=${DATABASE_URL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
     networks:
       - app-network
 
@@ -39,6 +68,8 @@ services:
     build: ./my-app
     ports:
       - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
     networks:
       - app-network
 

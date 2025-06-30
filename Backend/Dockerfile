@@ -1,4 +1,3 @@
-# Use Debian-based Node image
 FROM node:20
 
 WORKDIR /app
