@@ -2,7 +2,7 @@ const { Worker } = require('bullmq');
 const { google } = require('googleapis');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
-const redis = require('../redisClient'); // Redis cache client
+const redis = require('../redis'); // ✅ fixed filename to match previous `redis.js`
 const { oAuth2Client, getGmail } = require('../oauth2');
 const classifyPriority = require('../Classify');
 const IORedis = require('ioredis');
@@ -11,14 +11,14 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-// ✅ Redis connection (Railway-compatible with TLS)
+// ✅ Redis connection for BullMQ (Upstash with TLS)
 const connection = new IORedis(process.env.REDIS_URL, {
-  tls: {}, // Important for Railway Redis
+  tls: process.env.REDIS_TLS === 'true' ? {} : undefined,
   maxRetriesPerRequest: null,
   connectTimeout: 10000,
 });
 
-// ✅ Gmail cache wrapper
+// ✅ Gmail message cache (5 min)
 async function getCachedEmail(userId, messageId, gmail) {
   const cacheKey = `gmail:${userId}:${messageId}`;
   const cached = await redis.get(cacheKey);
@@ -29,12 +29,12 @@ async function getCachedEmail(userId, messageId, gmail) {
   }
 
   const full = await gmail.users.messages.get({ userId, id: messageId });
-  await redis.set(cacheKey, JSON.stringify(full.data), 'EX', 300); // Cache for 5 minutes
-  console.log(`✅ Redis Cache Miss for message: ${messageId}`);
+  await redis.set(cacheKey, JSON.stringify(full.data), 'EX', 300);
+  console.log(`📨 Fetched and cached message: ${messageId}`);
   return full.data;
 }
 
-// ✅ Rule-based classification
+// ✅ Priority classification using custom rules
 async function classifyWithRules(subject, snippet, from, userEmail) {
   const rules = await prisma.priorityRule.findMany({ where: { userEmail } });
 
@@ -52,12 +52,12 @@ async function classifyWithRules(subject, snippet, from, userEmail) {
   return classifyPriority(subject, snippet);
 }
 
-// ✅ BullMQ Worker setup
+// ✅ BullMQ worker for processing Gmail jobs
 const worker = new Worker(
-  'email-processing',
+  'email-queue', // match queue name from `emailQueue.js`
   async (job) => {
     try {
-      console.log('📥 Processing Job:', job.id);
+      console.log('📥 Job received:', job.id);
 
       const { tokens, userEmail, token } = job.data;
       oAuth2Client.setCredentials(tokens);
@@ -70,17 +70,17 @@ const worker = new Worker(
       });
 
       if (!messagesList.data.messages) {
-        console.log('📭 No messages found.');
+        console.log('📭 No inbox messages found.');
         return;
       }
 
       const emails = await Promise.all(
         messagesList.data.messages.map(async (msg) => {
           const full = await getCachedEmail('me', msg.id, gmail);
-          const snippet = full.snippet;
           const headers = full.payload.headers;
           const subject = headers.find((h) => h.name === 'Subject')?.value || '';
           const from = headers.find((h) => h.name === 'From')?.value || '';
+          const snippet = full.snippet;
           const messageId = full.id;
 
           const priority = await classifyWithRules(subject, snippet, from, userEmail);
@@ -108,9 +108,9 @@ const worker = new Worker(
         })),
       });
 
-      console.log(`✅ Job ${job.id} done for user ${userEmail}`);
+      console.log(`✅ Job ${job.id} completed for ${userEmail}`);
     } catch (err) {
-      console.error(`❌ Worker Job ${job.id} Failed:`, err);
+      console.error(`❌ Job ${job.id} failed:`, err);
     }
   },
   {
@@ -119,4 +119,4 @@ const worker = new Worker(
   }
 );
 
-console.log('🚀 Email Worker Started...');
+console.log('🚀 Email Worker is running...');

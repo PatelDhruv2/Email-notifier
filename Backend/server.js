@@ -11,7 +11,6 @@ const emailQueue = require('./queues/emailQueue.js');
 dotenv.config();
 const prisma = new PrismaClient();
 const app = express();
-
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
@@ -19,6 +18,10 @@ app.use(express.json());
 
 // ✅ Fallback for redirect URI
 const redirectUri = process.env.REDIRECT_URI;
+
+// 🔐 Allowed values
+const validMatchTypes = ['sender', 'keyword'];
+const validPriorities = ['low', 'medium', 'high'];
 
 // 1️⃣ Google OAuth flow
 app.get('/auth/google', (req, res) => {
@@ -47,7 +50,7 @@ app.get('/auth/google/callback', async (req, res) => {
 
     const token = crypto.randomUUID();
 
-    await emailQueue.add('process-emails', {
+    await emailQueue.add('email-queue', {
       tokens,
       userEmail,
       token,
@@ -68,7 +71,11 @@ app.get('/emails/:token', async (req, res) => {
       where: { token: req.params.token },
       include: { emails: true },
     });
-    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
     res.json({ emails: session.emails });
   } catch (err) {
     console.error('Fetch Email Error:', err);
@@ -80,12 +87,25 @@ app.get('/emails/:token', async (req, res) => {
 app.post('/rules', async (req, res) => {
   try {
     const { userEmail, keyword, matchType, priority } = req.body;
+
     if (!userEmail || !keyword || !matchType || !priority) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    if (
+      !validMatchTypes.includes(matchType.toLowerCase()) ||
+      !validPriorities.includes(priority.toLowerCase())
+    ) {
+      return res.status(400).json({ error: 'Invalid matchType or priority' });
+    }
+
     const rule = await prisma.priorityRule.create({
-      data: { userEmail, keyword, matchType, priority },
+      data: {
+        userEmail,
+        keyword,
+        matchType: matchType.toLowerCase(),
+        priority: priority.toLowerCase(),
+      },
     });
 
     res.json({ success: true, rule });
@@ -135,5 +155,11 @@ async function classifyWithRules(subject, snippet, from, userEmail) {
 
   return classifyPriority(subject, snippet);
 }
+
+// 🛑 Graceful shutdown for Prisma
+process.on('SIGINT', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
 
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
