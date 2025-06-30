@@ -2,7 +2,7 @@ const { Worker } = require('bullmq');
 const { google } = require('googleapis');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
-const redis = require('../redisClient');  // ✅ Central Redis client
+const redis = require('../redisClient'); // Reused for caching
 const { oAuth2Client, getGmail } = require('../oauth2');
 const classifyPriority = require('../Classify');
 const IORedis = require('ioredis');
@@ -11,16 +11,13 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-// ✅ BullMQ connection for production
-const connection = new IORedis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6379,
-  password: process.env.REDIS_PASSWORD || undefined,  // ✅ If Railway Redis uses password
-  tls: process.env.REDIS_TLS === 'true' ? {} : undefined,  // ✅ For managed Redis with TLS
+// ✅ BullMQ connection using full REDIS_URL (recommended for Railway)
+const connection = new IORedis(process.env.REDIS_URL, {
   maxRetriesPerRequest: null,
+  connectTimeout: 10000,
 });
 
-// ✅ Redis cache wrapper for Gmail API fetch
+// ✅ Gmail cache wrapper
 async function getCachedEmail(userId, messageId, gmail) {
   const cacheKey = `gmail:${userId}:${messageId}`;
   const cached = await redis.get(cacheKey);
@@ -31,12 +28,12 @@ async function getCachedEmail(userId, messageId, gmail) {
   }
 
   const full = await gmail.users.messages.get({ userId, id: messageId });
-  await redis.set(cacheKey, JSON.stringify(full.data), 'EX', 300); // Cache for 5 mins
+  await redis.set(cacheKey, JSON.stringify(full.data), 'EX', 300); // Cache for 5 minutes
   console.log(`✅ Redis Cache Miss for message: ${messageId}`);
   return full.data;
 }
 
-// ✅ Custom rule-based classifier
+// ✅ Custom rule-based classification
 async function classifyWithRules(subject, snippet, from, userEmail) {
   const rules = await prisma.priorityRule.findMany({ where: { userEmail } });
 
@@ -54,7 +51,7 @@ async function classifyWithRules(subject, snippet, from, userEmail) {
   return classifyPriority(subject, snippet);
 }
 
-// ✅ BullMQ Worker
+// ✅ BullMQ Worker setup
 const worker = new Worker(
   'email-processing',
   async (job) => {
