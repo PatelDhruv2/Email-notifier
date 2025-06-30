@@ -21,7 +21,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!token) return;
-    fetch(`${backendUrl}/emails/${token}`)
+    fetch(`https://email-notifier-production.up.railway.app/emails/${token}`)
       .then((res) => {
         if (!res.ok) throw new Error('Session not found');
         return res.json();
