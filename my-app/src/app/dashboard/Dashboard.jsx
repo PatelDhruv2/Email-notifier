@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 export default function Dashboard() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const [emails, setEmails] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -17,11 +18,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
   useEffect(() => {
-    if (!token) return;
-    fetch(`https://email-notifier-production.up.railway.app/emails/${token}`)
+    if (!token || !backendUrl) {
+      console.error('Missing token or backend URL:', { token, backendUrl });
+      return;
+    }
+
+    fetch(`${backendUrl}/emails/${token}`)
       .then((res) => {
         if (!res.ok) throw new Error('Session not found');
         return res.json();
@@ -32,6 +35,7 @@ export default function Dashboard() {
         setLoading(false);
       })
       .catch((err) => {
+        console.error('Fetch error:', err);
         setError(err.message);
         setLoading(false);
       });
@@ -59,17 +63,26 @@ export default function Dashboard() {
   const handleAddRule = async (e) => {
     e.preventDefault();
     if (!ruleInput.trim()) return alert('Enter a keyword or email');
+
+    const userEmail = extractUserFromToken(token);
+    if (!userEmail) {
+      alert('Invalid token. Cannot extract user email.');
+      return;
+    }
+
     try {
-      await fetch(`https://email-notifier-production.up.railway.app/rules`, {
+      const res = await fetch(`${backendUrl}/rules`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userEmail: extractUserFromToken(token),
+          userEmail,
           keyword: ruleInput,
           matchType,
           priority,
         }),
       });
+
+      if (!res.ok) throw new Error('Failed to add rule');
       alert('Rule added. You can now re-authenticate to apply it.');
       setRuleInput('');
     } catch (err) {
@@ -84,7 +97,8 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#0e1117] text-white px-6 py-10">
       <h1 className="text-3xl font-bold text-center mb-6">📬 Email Priority Dashboard</h1>
-      {/* Rule form */}
+
+      {/* Rule Form */}
       <form
         onSubmit={handleAddRule}
         className="bg-[#161b22] border border-gray-700 p-4 rounded-md mb-8 flex flex-col sm:flex-row sm:items-end gap-3"
@@ -130,7 +144,7 @@ export default function Dashboard() {
         </button>
       </form>
 
-      {/* Search and filter */}
+      {/* Search and Filter */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <input
           type="text"
@@ -151,7 +165,7 @@ export default function Dashboard() {
         </select>
       </div>
 
-      {/* Email list */}
+      {/* Email List */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map((email, i) => (
           <div
@@ -187,6 +201,7 @@ export default function Dashboard() {
   );
 }
 
+// Tag color based on priority
 function getTagClass(priority) {
   switch (priority?.toLowerCase()) {
     case 'high':
@@ -200,6 +215,14 @@ function getTagClass(priority) {
   }
 }
 
+// ✅ Decode JWT and extract user email
 function extractUserFromToken(token) {
-  return 'dhruv711622@gmail.com'; // Dummy for now
+  try {
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    return decoded.email;
+  } catch (error) {
+    console.error('Failed to extract user from token:', error);
+    return null;
+  }
 }
